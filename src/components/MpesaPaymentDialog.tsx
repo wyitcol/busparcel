@@ -28,6 +28,11 @@ const MpesaPaymentDialog = ({
   const [phone, setPhone] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const hasResponseContext = (value: unknown): value is { context: Response } =>
+    typeof value === "object" &&
+    value !== null &&
+    "context" in value &&
+    (value as { context?: unknown }).context instanceof Response;
 
   const calculatePrice = (weight: number) => {
     // Base price KES 200 + KES 50 per kg
@@ -73,10 +78,9 @@ const MpesaPaymentDialog = ({
         description = err.message || description;
       }
 
-      const errWithContext = err as { context?: Response };
-      if (errWithContext?.context instanceof Response) {
+      if (hasResponseContext(err)) {
         try {
-          const payload = await errWithContext.context.json();
+          const payload = await err.context.json();
           description = payload?.error || payload?.message || description;
         } catch {
           // keep default description
