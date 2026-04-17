@@ -29,14 +29,19 @@ const MpesaPaymentDialog = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSent, setIsSent] = useState(false);
 
-  const calculatePrice = (weight: number) => {
-    // Base price KES 200 + KES 50 per kg
-    return 200 + weight * 50;
-  };
-
   const handlePayment = async () => {
     if (!phone) {
       toast({ title: "Enter phone number", variant: "destructive" });
+      return;
+    }
+
+    const normalizedPhone = phone.replace(/\s+/g, "");
+    if (!/^(\+?254|0)?7\d{8}$/.test(normalizedPhone)) {
+      toast({
+        title: "Invalid phone number",
+        description: "Use a Safaricom number like 07XXXXXXXX or 2547XXXXXXXX.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -51,7 +56,12 @@ const MpesaPaymentDialog = ({
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const backendError = (data && typeof data === "object" && "error" in data && typeof data.error === "string")
+          ? data.error
+          : null;
+        throw new Error(backendError || error.message || "Could not initiate payment");
+      }
 
       if (data?.success) {
         setIsSent(true);
@@ -67,10 +77,10 @@ const MpesaPaymentDialog = ({
           variant: "destructive",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: "Payment error",
-        description: err.message || "Something went wrong",
+        description: err instanceof Error ? err.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
