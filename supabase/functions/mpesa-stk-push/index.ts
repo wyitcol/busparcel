@@ -6,19 +6,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const DEFAULT_ACCOUNT_REFERENCE = "BusParcel";
+
+interface MpesaStkPushRequest {
+  phone?: string;
+  amount?: number;
+  parcel_id?: string;
+  account_reference?: string;
+  simulate?: boolean;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { phone, amount, parcel_id, account_reference, simulate } = await req.json() as {
-      phone?: string;
-      amount?: number;
-      parcel_id?: string;
-      account_reference?: string;
-      simulate?: boolean;
-    };
+    const rawBody: unknown = await req.json();
+    if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { phone, amount, parcel_id, account_reference, simulate } = rawBody as MpesaStkPushRequest;
 
     if (!phone || !amount || !parcel_id) {
       return new Response(
@@ -50,14 +62,14 @@ serve(async (req) => {
     const shouldSimulate = simulate === true;
 
     if (shouldSimulate) {
-      const fakeReceipt = `SIM${Date.now().toString().slice(-8)}`;
+      const simulatedReceipt = `SIM${Date.now().toString().slice(-8)}`;
       await supabase
         .from("parcels")
         .update({
           payment_status: "paid",
           payment_amount: amount,
           mpesa_phone: formattedPhone,
-          mpesa_receipt: fakeReceipt,
+          mpesa_receipt: simulatedReceipt,
         })
         .eq("id", parcel_id);
 
@@ -65,7 +77,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           message: "Payment processed successfully (simulated M-Pesa).",
-          receipt: fakeReceipt,
+          receipt: simulatedReceipt,
           simulated: true,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -102,7 +114,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "Failed to authenticate with M-Pesa. Confirm credentials and MPESA_ENVIRONMENT (sandbox/production).",
-          details: tokenData.errorMessage || tokenData.error_description || null,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -125,8 +136,8 @@ serve(async (req) => {
       PartyB: shortcode,
       PhoneNumber: formattedPhone,
       CallBackURL: callbackUrl,
-      AccountReference: account_reference || "BusParcel",
-      TransactionDesc: `Payment for parcel ${account_reference || "BusParcel"}`,
+      AccountReference: account_reference || DEFAULT_ACCOUNT_REFERENCE,
+      TransactionDesc: `Payment for parcel ${account_reference || DEFAULT_ACCOUNT_REFERENCE}`,
     };
 
     const stkRes = await fetch(
@@ -147,7 +158,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: stkData.errorMessage || stkData.ResponseDescription || "STK push request was rejected by M-Pesa.",
-          details: stkData,
         }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

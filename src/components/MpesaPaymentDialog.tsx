@@ -16,6 +16,10 @@ interface MpesaPaymentDialogProps {
   onPaymentInitiated: () => void;
 }
 
+interface MpesaFunctionError {
+  error?: string;
+}
+
 const MpesaPaymentDialog = ({
   open,
   onOpenChange,
@@ -57,9 +61,7 @@ const MpesaPaymentDialog = ({
       });
 
       if (error) {
-        const backendError = (data && typeof data === "object" && "error" in data && typeof data.error === "string")
-          ? data.error
-          : null;
+        const backendError = (data as MpesaFunctionError | null)?.error ?? null;
         throw new Error(backendError || error.message || "Could not initiate payment");
       }
 
