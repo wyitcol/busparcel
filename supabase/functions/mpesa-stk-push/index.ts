@@ -32,9 +32,15 @@ serve(async (req) => {
 
     const { phone, amount, parcel_id, account_reference, simulate } = rawBody as MpesaStkPushRequest;
 
-    if (!phone || !amount || !parcel_id) {
+    if (
+      (typeof phone !== "string" && typeof phone !== "number") ||
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      typeof parcel_id !== "string" ||
+      !parcel_id.trim()
+    ) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: phone, amount, parcel_id" }),
+        JSON.stringify({ error: "Invalid required fields: phone, amount, parcel_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -59,9 +65,7 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const shouldSimulate = simulate === true;
-
-    if (shouldSimulate) {
+    if (simulate === true) {
       const simulatedReceipt = `SIM${Date.now().toString().slice(-8)}`;
       await supabase
         .from("parcels")
