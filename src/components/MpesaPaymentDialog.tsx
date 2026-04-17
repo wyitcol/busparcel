@@ -67,10 +67,25 @@ const MpesaPaymentDialog = ({
           variant: "destructive",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      let description = "Something went wrong";
+      if (err instanceof Error) {
+        description = err.message || description;
+      }
+
+      const errWithContext = err as { context?: Response };
+      if (errWithContext?.context instanceof Response) {
+        try {
+          const payload = await errWithContext.context.json();
+          description = payload?.error || payload?.message || description;
+        } catch {
+          // keep default description
+        }
+      }
+
       toast({
         title: "Payment error",
-        description: err.message || "Something went wrong",
+        description,
         variant: "destructive",
       });
     } finally {
