@@ -28,6 +28,11 @@ const MpesaPaymentDialog = ({
   const [phone, setPhone] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const hasResponseContext = (value: unknown): value is { context: Response } =>
+    typeof value === "object" &&
+    value !== null &&
+    "context" in value &&
+    (value as { context?: unknown }).context instanceof Response;
 
   const calculatePrice = (weight: number) => {
     // Base price KES 200 + KES 50 per kg
@@ -67,10 +72,24 @@ const MpesaPaymentDialog = ({
           variant: "destructive",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      let description = "Something went wrong";
+      if (err instanceof Error) {
+        description = err.message || description;
+      }
+
+      if (hasResponseContext(err)) {
+        try {
+          const payload = await err.context.json();
+          description = payload?.error || payload?.message || description;
+        } catch {
+          // keep default description
+        }
+      }
+
       toast({
         title: "Payment error",
-        description: err.message || "Something went wrong",
+        description,
         variant: "destructive",
       });
     } finally {
