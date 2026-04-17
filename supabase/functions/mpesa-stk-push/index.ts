@@ -33,7 +33,7 @@ serve(async (req) => {
     const { phone, amount, parcel_id, account_reference, simulate } = rawBody as MpesaStkPushRequest;
 
     if (
-      (typeof phone !== "string" && typeof phone !== "number") ||
+      typeof phone !== "string" ||
       typeof amount !== "number" ||
       !Number.isFinite(amount) ||
       typeof parcel_id !== "string" ||
@@ -46,18 +46,16 @@ serve(async (req) => {
     }
 
     // Format phone: ensure it starts with 2547XXXXXXXX
-    let formattedPhone = String(phone).replace(/\D/g, "");
+    let formattedPhone = phone.replace(/\D/g, "");
     if (formattedPhone.startsWith("0")) {
       formattedPhone = `254${formattedPhone.slice(1)}`;
     } else if (formattedPhone.startsWith("7") && formattedPhone.length === 9) {
       formattedPhone = `254${formattedPhone}`;
-    } else if (formattedPhone.startsWith("25407")) {
-      formattedPhone = `254${formattedPhone.slice(4)}`;
     }
 
     if (!/^2547\d{8}$/.test(formattedPhone)) {
       return new Response(
-        JSON.stringify({ error: "Invalid phone number format. Use a Safaricom number like 07XXXXXXXX or 2547XXXXXXXX." }),
+        JSON.stringify({ error: "Invalid phone number format. Use a Safaricom number in the format 07XXXXXXXX, 7XXXXXXXX, or 2547XXXXXXXX." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
