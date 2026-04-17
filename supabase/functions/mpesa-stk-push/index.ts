@@ -34,7 +34,9 @@ serve(async (req) => {
 
     if (!/^2547\d{8}$/.test(formattedPhone)) {
       return new Response(
-        JSON.stringify({ error: "Invalid phone number. Use a valid Safaricom number." }),
+        JSON.stringify({
+          error: "Invalid phone number. Use format 07XXXXXXXX, 7XXXXXXXX, +2547XXXXXXXX, or 2547XXXXXXXX.",
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -42,7 +44,7 @@ serve(async (req) => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       return new Response(
-        JSON.stringify({ error: "Invalid amount." }),
+        JSON.stringify({ error: "Invalid amount. Amount must be a positive number." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
